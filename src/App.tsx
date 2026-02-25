@@ -109,20 +109,26 @@ const BarChart: React.FC = () => {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+
+      const zoomIntensity = 0.001;
+      const delta = -e.deltaY * zoomIntensity;
+      const newScale = Math.max(0.1, Math.min(scale * (1 + delta), 20));
+
       const cx = window.innerWidth / 2;
       const cy = window.innerHeight / 2;
-      const mouseX = e.clientX - cx;
-      const mouseY = e.clientY - cy;
 
-      const worldX = mouseX / scale - translation.x;
-      const worldY = mouseY / scale - translation.y;
+      // Choose anchor point
+      const anchorX = e.deltaY < 0 ? e.clientX - cx : 0;
+      const anchorY = e.deltaY < 0 ? e.clientY - cy : 0;
 
-      const newScale = Math.max(0.1, Math.min(scale + e.deltaY * -0.001 * scale, 20));
-      
+      const worldX = anchorX / scale - translation.x;
+      const worldY = anchorY / scale - translation.y;
+
       setTranslation({
-        x: mouseX / newScale - worldX,
-        y: mouseY / newScale - worldY
+        x: anchorX / newScale - worldX,
+        y: anchorY / newScale - worldY
       });
+
       setScale(newScale);
     };
 
