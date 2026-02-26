@@ -1,5 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import './App.css';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import "./App.css";
+
+/* ================================
+   Types
+================================ */
+
+interface LegendItem {
+  name: string;
+  color: [number, number, number, number];
+}
 
 interface BarData {
   x: number;
@@ -7,14 +16,17 @@ interface BarData {
   w: number;
   h: number;
   label: string;
-  color?: [number, number, number, number];
+  segments: number[];
 }
 
 interface ChartDefinition {
+  legend: LegendItem[];
   bars: BarData[];
 }
 
-// ===== SHADERS =====
+/* ================================
+   Shaders
+================================ */
 
 const VS_SOURCE = `
 attribute vec2 a_position;
@@ -39,6 +51,10 @@ void main() {
 }
 `;
 
+/* ================================
+   Component
+================================ */
+
 const BarChart: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -46,44 +62,54 @@ const BarChart: React.FC = () => {
   const bufferRef = useRef<WebGLBuffer | null>(null);
 
   const [bars, setBars] = useState<BarData[]>([]);
+  const [legend, setLegend] = useState<LegendItem[]>([]);
   const [scale, setScale] = useState(1);
   const [translation, setTranslation] = useState({ x: 0, y: 0 });
+  const [showLegend, setShowLegend] = useState(false);
+  const [uiVisible, setUiVisible] = useState(true);
+  const [showShortcuts, setShowShortcuts] = useState(true);
 
-  // ===== FILE UPLOAD =====
+  /* ================================
+     File Upload
+  ================================ */
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = (event) => {
       try {
         const parsed: ChartDefinition = JSON.parse(
           event.target?.result as string
         );
 
-        if (!parsed.bars || !Array.isArray(parsed.bars)) {
-          throw new Error('Invalid chart definition.');
+        if (!parsed.bars || !parsed.legend) {
+          throw new Error("Invalid chart definition");
         }
 
         setBars(parsed.bars);
+        setLegend(parsed.legend);
         setScale(1);
         setTranslation({ x: 0, y: 0 });
       } catch {
-        alert('Invalid JSON format.');
+        alert("Invalid JSON format");
       }
     };
 
     reader.readAsText(file);
   };
 
-  // ===== WEBGL INITIALIZATION =====
+  /* ================================
+     WebGL Initialization (once)
+  ================================ */
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl');
+    const gl = canvas.getContext("webgl");
     if (!gl) return;
 
     glRef.current = gl;
@@ -106,10 +132,11 @@ const BarChart: React.FC = () => {
 
     programRef.current = program;
     bufferRef.current = gl.createBuffer();
-
   }, []);
 
-  // ===== DRAW FUNCTION =====
+  /* ================================
+     Draw Function
+  ================================ */
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -128,11 +155,11 @@ const BarChart: React.FC = () => {
 
     gl.useProgram(program);
 
-    const positionLoc = gl.getAttribLocation(program, 'a_position');
-    const resLoc = gl.getUniformLocation(program, 'u_resolution');
-    const transLoc = gl.getUniformLocation(program, 'u_translation');
-    const scaleLoc = gl.getUniformLocation(program, 'u_scale');
-    const colorLoc = gl.getUniformLocation(program, 'u_color');
+    const positionLoc = gl.getAttribLocation(program, "a_position");
+    const resLoc = gl.getUniformLocation(program, "u_resolution");
+    const transLoc = gl.getUniformLocation(program, "u_translation");
+    const scaleLoc = gl.getUniformLocation(program, "u_scale");
+    const colorLoc = gl.getUniformLocation(program, "u_color");
 
     gl.enableVertexAttribArray(positionLoc);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -145,57 +172,71 @@ const BarChart: React.FC = () => {
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
-    // Draw border
+    /* ===== Draw Border ===== */
     gl.uniform4f(colorLoc, 0.4, 0.4, 0.4, 1.0);
     gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([
-        cx - 200, cy + 50,
-        cx + 200, cy + 50,
-        cx + 200, cy - 150,
-        cx - 200, cy - 150
+        cx - 300, cy + 100,
+        cx + 300, cy + 100,
+        cx + 300, cy - 200,
+        cx - 300, cy - 200
       ]),
       gl.STATIC_DRAW
     );
     gl.drawArrays(gl.LINE_LOOP, 0, 4);
 
-    // Draw bars
-    bars.forEach(bar => {
-      const x1 = bar.x + cx;
-      const x2 = bar.x + bar.w + cx;
-      const y1 = bar.y + cy;
-      const y2 = bar.y - bar.h + cy;
+    /* ===== Draw Stacked Bars ===== */
+    bars.forEach((bar) => {
+      const total = bar.segments.reduce((a, b) => a + b, 0);
+      if (total === 0) return;
 
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([
-          x1, y1,
-          x2, y1,
-          x1, y2,
-          x1, y2,
-          x2, y1,
-          x2, y2
-        ]),
-        gl.STATIC_DRAW
-      );
+      let accumulatedHeight = 0;
 
-      const color = bar.color ?? [0.0, 1.0, 0.8, 1.0];
-      gl.uniform4f(colorLoc, color[0], color[1], color[2], color[3]);
+      bar.segments.forEach((value, i) => {
+        const segmentHeight = (value / total) * bar.h;
 
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+        const x1 = bar.x + cx;
+        const x2 = bar.x + bar.w + cx;
+
+        const yTop = bar.y - accumulatedHeight + cy;
+        const yBottom = bar.y - accumulatedHeight - segmentHeight + cy;
+
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array([
+            x1, yTop,
+            x2, yTop,
+            x1, yBottom,
+            x1, yBottom,
+            x2, yTop,
+            x2, yBottom
+          ]),
+          gl.STATIC_DRAW
+        );
+
+        const color = legend[i]?.color ?? [1, 1, 1, 1];
+        gl.uniform4f(colorLoc, color[0], color[1], color[2], color[3]);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        accumulatedHeight += segmentHeight;
+      });
     });
-  }, [bars, scale, translation]);
+  }, [bars, legend, scale, translation]);
 
   useEffect(() => {
     draw();
   }, [draw]);
 
   useEffect(() => {
-    window.addEventListener('resize', draw);
-    return () => window.removeEventListener('resize', draw);
+    window.addEventListener("resize", draw);
+    return () => window.removeEventListener("resize", draw);
   }, [draw]);
 
-  // ===== ZOOM HANDLER =====
+  /* ================================
+     Zoom Handling
+  ================================ */
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -208,7 +249,7 @@ const BarChart: React.FC = () => {
       const cx = window.innerWidth / 2;
       const cy = window.innerHeight / 2;
 
-      // Zoom in → mouse anchor
+      // Zoom in → anchor to mouse
       const anchorX = e.deltaY < 0 ? e.clientX - cx : 0;
       const anchorY = e.deltaY < 0 ? e.clientY - cy : 0;
 
@@ -217,61 +258,132 @@ const BarChart: React.FC = () => {
 
       setTranslation({
         x: anchorX / newScale - worldX,
-        y: anchorY / newScale - worldY
+        y: anchorY / newScale - worldY,
       });
 
       setScale(newScale);
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleWheel);
   }, [scale, translation]);
 
-  // ===== JSX =====
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input field
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // alt+K → toggle UI
+      if (e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setUiVisible(prev => !prev);
+      }
+
+      // alt+M → toggle shortcuts panel
+      if (e.altKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  /* ================================
+     JSX
+  ================================ */
+
+  const hasValidData = legend.length > 0 && bars.length > 0;
 
   return (
     <div className="webgl-container">
       <canvas ref={canvasRef} />
+      {uiVisible && (
+        <div className="ui-overlay">
+          {bars.map((bar, i) => {
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
 
-      <div className="ui-overlay">
-        {bars.map((bar, i) => {
-          const cx = window.innerWidth / 2;
-          const cy = window.innerHeight / 2;
+            const left =
+              cx + (bar.x + bar.w / 2 + translation.x) * scale;
+            const top =
+              cy + (bar.y + 20 + translation.y) * scale;
 
-          const left =
-            cx + (bar.x + bar.w / 2 + translation.x) * scale;
+            return (
+              <div key={i} className="label" style={{ left, top }}>
+                {bar.label}
+              </div>
+            );
+          })} 
+          </div>
+      )}
+      {uiVisible && (
+        <div className="controls">
+          <input type="file" accept=".json" onChange={handleFileUpload} />
+          <button
+            onClick={() => {
+              //if (!hasValidData) return;
+              setShowLegend(prev => !prev);
+            }}
+            disabled={!hasValidData}
+            className={!hasValidData ? "disabled-button" : ""}
+          >
+            {showLegend ? "Hide Legend" : "Show Legend"}
+          </button>
 
-          const top =
-            cy + (bar.y + 15 + translation.y) * scale;
+          <div className="zoom-indicator">
+            ZOOM: {scale.toFixed(2)}x
+          </div>
 
-          return (
-            <div key={i} className="label" style={{ left, top }}>
-              {bar.label}
+          <button
+            onClick={() => {
+              setScale(1);
+              setTranslation({ x: 0, y: 0 });
+            }}
+          >
+            RESET VIEW
+          </button>
+
+          {/* Legend */}
+            <div className="legend"
+            style={{ display: showLegend ? "flex" : "none" }}
+            >
+              {legend.map((item, i) => {
+                const r = Math.round(item.color[0] * 255);
+                const g = Math.round(item.color[1] * 255);
+                const b = Math.round(item.color[2] * 255);
+                const a = item.color[3];
+
+                return (
+                  <div key={i} className="legend-item">
+                    <div
+                      className="legend-color"
+                      style={{
+                        backgroundColor: `rgba(${r}, ${g}, ${b}, ${a})`
+                      }}
+                    />
+                    <span>{item.name}</span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
-
-      <div className="controls">
-        <input
-          type="file"
-          accept=".json"
-          onChange={handleFileUpload}
-        />
-
-        <div className="zoom-indicator">
-          ZOOM: {scale.toFixed(2)}x
         </div>
-
-        <button
-          onClick={() => {
-            setScale(1);
-            setTranslation({ x: 0, y: 0 });
-          }}
-        >
-          RESET VIEW
-        </button>
-      </div>
+      )}
+      {showShortcuts && (
+        <div className="shortcuts-panel">
+          <div className="shortcuts-title">Keyboard Shortcuts</div>
+          <div>alt + K → Toggle UI</div>
+          <div>alt + M → Toggle Help</div>
+          <div>Mouse Wheel → Zoom</div>
+        </div>
+      )}
     </div>
   );
 };
