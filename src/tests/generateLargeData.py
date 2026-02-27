@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 import random
 import time
@@ -5,7 +7,8 @@ from pathlib import Path
 
 TARGET_SIZE_BYTES = 1_000_000
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_FILE = SCRIPT_DIR / "large_chart.json"
+DATA_DIR = 'data'
+OUTPUT_FILE = SCRIPT_DIR / DATA_DIR / "large_chart.json"
 
 legend = [
     {"name": "GPU-only",        "color": [0.1, 0.8, 1.0, 1.0]},
