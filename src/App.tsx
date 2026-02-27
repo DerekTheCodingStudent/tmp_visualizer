@@ -77,6 +77,8 @@ const BarChart: React.FC = () => {
   const [showLegend, setShowLegend] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
   /* ================================
      File Upload
@@ -385,6 +387,39 @@ const BarChart: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+
+  // mouse dragging feature
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+  // Only start dragging if clicking the canvas (not UI buttons)
+  if ((e.target as HTMLElement).tagName === "CANVAS") {
+    setIsDragging(true);
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+
+    // Calculate how far the mouse moved since the last frame
+    const dx = e.clientX - lastMousePos.x;
+    const dy = e.clientY - lastMousePos.y;
+
+    // Update translation. 
+    // We divide by scale so that dragging feels consistent regardless of zoom level.
+    setTranslation(prev => ({
+      x: prev.x + dx / scale,
+      y: prev.y + dy / scale
+    }));
+
+    // Update the reference point for the next movement
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   /* ================================
      JSX
   ================================ */
@@ -392,18 +427,38 @@ const BarChart: React.FC = () => {
   const hasValidData = legend.length > 0 && bars.length > 0;
 
   return (
-    <div className="webgl-container">
+    <div 
+    className="webgl-container"
+    onMouseDown={handleMouseDown}
+    onMouseMove={handleMouseMove}
+    onMouseUp={handleMouseUp}
+    onMouseLeave={handleMouseUp} // Stop dragging if mouse leaves window
+    style={{ cursor: isDragging ? 'grabbing' : 'crosshair' }}
+    >
       <canvas ref={canvasRef} />
       {uiVisible && (
         <div className="ui-overlay">
           {bars.map((bar, i) => {
+            // 1. Zoom Threshold: Don't show labels if we are zoomed too far out
+            if (scale < 0.8) return null;
+
             const cx = window.innerWidth / 2;
             const cy = window.innerHeight / 2;
 
-            const left =
-              cx + (bar.x + bar.w / 2 + translation.x) * scale;
-            const top =
-              cy + (bar.y + 20 + translation.y) * scale;
+            // Calculate screen position
+            const left = cx + (bar.x + bar.w / 2 + translation.x) * scale;
+            const top = cy + (bar.y + 20 + translation.y) * scale;
+
+            // 2. Viewport Culling: Only render if the label is actually on screen
+            const padding = 100; // Buffer to prevent labels from popping in at the edges
+            if (
+              left < -padding || 
+              left > window.innerWidth + padding || 
+              top < -padding || 
+              top > window.innerHeight + padding
+            ) {
+              return null;
+            }
 
             return (
               <div key={i} className="label" style={{ left, top }}>
@@ -411,7 +466,7 @@ const BarChart: React.FC = () => {
               </div>
             );
           })} 
-          </div>
+        </div>
       )}
       {uiVisible && (
         <div className="controls">
