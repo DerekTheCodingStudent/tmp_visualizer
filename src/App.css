@@ -127,3 +127,13 @@ button:disabled {
   pointer-events: none;
   transform: none; 
 }
+
+.chart-title {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  pointer-events: none;
+  white-space: nowrap;
+}

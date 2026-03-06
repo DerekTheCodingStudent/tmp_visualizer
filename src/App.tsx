@@ -21,6 +21,7 @@ interface BarData {
 }
 
 interface ChartDefinition {
+  title?: string;
   legend: LegendItem[];
   bars: BarData[];
 }
@@ -86,6 +87,7 @@ const BarChart: React.FC = () => {
   const baseQuadsRef = useRef<Quad[]>([]);
   const quadtreeRef = useRef<QuadNode | null>(null);
   const [fileLabels, setFileLabels] = useState<{name: string, x: number, y: number}[]>([]);
+  const [titles, setTitles] = useState<string[]>([]);
 
   /* ================================
      File Upload
@@ -98,6 +100,7 @@ const BarChart: React.FC = () => {
     const allBars: BarData[] = [];
     const labels: {name: string, x:number, y: number}[] = [];
     let combinedLegend: LegendItem[] = [];
+    const newTitles: string[] = [];
     const verticalSpacing = 300; // Offset between datasets
     
     for (let i = 0; i < files.length; i++) {
@@ -118,6 +121,9 @@ const BarChart: React.FC = () => {
 
         allBars.push(...offsetBars);
         labels.push({ name: file.name, x: minX, y: currentYOffset });
+        if (parsed.title) {
+          newTitles.push(parsed.title);
+        }
         
         // Merge legends if they are different (or just take the first)
         if (i === 0) combinedLegend = parsed.legend;
@@ -129,7 +135,7 @@ const BarChart: React.FC = () => {
 
     const globalMinX = allBars.length > 0 ? Math.min(...allBars.map(b => b.x)) : 0;
 
-
+    setTitles(newTitles);
     setBars(allBars);
     setLegend(combinedLegend);
     setFileLabels(labels);
@@ -700,6 +706,28 @@ const BarChart: React.FC = () => {
       <canvas ref={canvasRef} />
       {uiVisible && (
         <div className="ui-overlay">
+        {titles.map((title, i) => {
+          const cx = window.innerWidth / 2;
+          const cy = window.innerHeight / 2;
+
+          const yWorld = -(i * 300) - 200; // slightly above your border (top border = +100)
+
+          const xPos = cx + (translation.x) * scale;
+          const yPos = cy + (yWorld + translation.y) * scale;
+
+          return (
+            <div
+              key={`title-${i}`}
+              className="chart-title"
+              style={{
+                left: `${xPos}px`,
+                top: `${yPos}px`,
+              }}
+            >
+              {title}
+            </div>
+          );
+        })}
           {fileLabels.map((file, i) => {
             const cx = window.innerWidth / 2;
             const cy = window.innerHeight / 2;
