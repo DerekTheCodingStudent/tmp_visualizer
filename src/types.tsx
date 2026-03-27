@@ -21,6 +21,8 @@ export interface ChartDefinition {
     bars: BarData[];
 }
 
+export type Orientation = "horizontal" | "vertical";
+
 // QuadTree Types
 
 export type Quad = {

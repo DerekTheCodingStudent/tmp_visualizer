@@ -24,6 +24,7 @@ const BarChart: React.FC = () => {
     const [showLegend, setShowLegend] = useState(false);
     const [culling, setCulling] = useState(true);
     const [showShortcuts, setShowShortcuts] = useState(true);
+    const [orientation, setOrientation] = useState<Orientation>("horizontal");
 
     // webgl context/shaders
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,24 +105,40 @@ const BarChart: React.FC = () => {
         const vertexData: number[] = [];
         const baseQuads: Quad[] = [];
 
+        const trackSpacing = 80;
+        const visualBarHeight = 30;
+
         bars.forEach((bar) => {
             const total = bar.segments.reduce((a, b) => a + b, 0);
             if (total === 0) return;
 
-            let accumulatedHeight = 0;
+            let offset = 0;
+
+            const scaledY = bar.y * trackSpacing;
 
             bar.segments.forEach((value, i) => {
-                const segmentHeight = (value / total) * bar.h;
-
-                const x1 = bar.x;
-                const x2 = bar.x + bar.w;
-
-                const yTop = bar.y - accumulatedHeight;
-                const yBottom = bar.y - accumulatedHeight - segmentHeight;
-
+                let x1, x2, yTop, yBottom;
                 const color = legend[i]?.color ?? [1, 1, 1, 1];
 
-                // Store quad for quadtree
+                if (orientation === "horizontal") {
+                    // Horizontal (Timeline Mode): Segments stack along X-axis
+                    const segmentWidth = (value / total) * bar.w;
+                    x1 = bar.x + offset;
+                    x2 = x1 + segmentWidth;
+                    yTop = scaledY + visualBarHeight / 2;
+                    yBottom = scaledY - visualBarHeight / 2;
+                    offset += segmentWidth;
+                } else {
+                    // Vertical (Standard Mode): Segments stack along Y-axis
+                    const segmentHeight =
+                        (value / total) * bar.h * trackSpacing;
+                    x1 = bar.x - 20;
+                    x2 = bar.x + 20;
+                    yBottom = scaledY + offset;
+                    yTop = yBottom + segmentHeight;
+                    offset += segmentHeight;
+                }
+
                 baseQuads.push({
                     x: x1,
                     y: yBottom,
@@ -130,7 +147,6 @@ const BarChart: React.FC = () => {
                     color,
                 });
 
-                // Push 6 vertices (static order)
                 vertexData.push(
                     x1,
                     yTop,
@@ -141,7 +157,6 @@ const BarChart: React.FC = () => {
                     x1,
                     yBottom,
                     ...color,
-
                     x1,
                     yBottom,
                     ...color,
@@ -152,8 +167,6 @@ const BarChart: React.FC = () => {
                     yBottom,
                     ...color,
                 );
-
-                accumulatedHeight += segmentHeight;
             });
         });
 
@@ -166,7 +179,7 @@ const BarChart: React.FC = () => {
         gl.bufferData(gl.ARRAY_BUFFER, floatData, gl.STATIC_DRAW);
 
         vertexCountRef.current = floatData.length / 6;
-    }, [bars, legend]);
+    }, [bars, legend, orientation]);
 
     //
     // generate border buffer
@@ -489,6 +502,7 @@ const BarChart: React.FC = () => {
                         bars={bars}
                         scale={scale}
                         translation={translation}
+                        orientation={orientation}
                     />
 
                     <ControlPanel
@@ -502,6 +516,8 @@ const BarChart: React.FC = () => {
                         setScale={setScale}
                         setTranslation={setTranslation}
                         legend={legend}
+                        orientation={orientation}
+                        setOrientation={setOrientation}
                     />
                 </>
             )}
@@ -520,9 +536,13 @@ const ChartOverlays: React.FC<{
     bars: BarData[];
     scale: number;
     translation: { x: number; y: number };
-}> = ({ titles, fileLabels, bars, scale, translation }) => {
+    orientation: Orientation;
+}> = ({ titles, fileLabels, bars, scale, translation, orientation }) => {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
+
+    const trackSpacing = 80;
+    const visualBarHeight = 30;
 
     return (
         <div className="ui-overlay">
@@ -557,10 +577,22 @@ const ChartOverlays: React.FC<{
             {/* Bar Labels (with Zoom/Viewport Culling) */}
             {scale >= 0.8 &&
                 bars.map((bar, i) => {
-                    const left =
-                        cx + (bar.x + bar.w / 2 + translation.x) * scale;
-                    const top = cy + (bar.y + 20 + translation.y) * scale;
+                    const left = cx + (bar.x + translation.x) * scale;
+                    const scaledY = bar.y * trackSpacing;
+                    const top = cy + (scaledY + translation.y) * scale;
 
+                    const labelStyle: React.CSSProperties =
+                        orientation === "horizontal"
+                            ? {
+                                  left: `${left}px`,
+                                  top: `${top - (visualBarHeight / 2) * scale}px`,
+                                  transform: "translateY(-100%)",
+                              }
+                            : {
+                                  left: `${left + 25 * scale}px`,
+                                  top: `${top}px`,
+                                  transform: "translateX(10px)",
+                              };
                     if (
                         left < -100 ||
                         left > window.innerWidth + 100 ||
@@ -570,7 +602,7 @@ const ChartOverlays: React.FC<{
                         return null;
 
                     return (
-                        <div key={i} className="label" style={{ left, top }}>
+                        <div key={i} className="label" style={labelStyle}>
                             {bar.label}
                         </div>
                     );
@@ -591,6 +623,8 @@ const ControlPanel: React.FC<{
     setScale: (s: number) => void;
     setTranslation: (t: { x: number; y: number }) => void;
     legend: LegendItem[];
+    orientation: Orientation;
+    setOrientation: React.Dispatch<React.SetStateAction<Orientation>>;
 }> = ({
     hasValidData,
     handleFileUpload,
@@ -602,6 +636,8 @@ const ControlPanel: React.FC<{
     setScale,
     setTranslation,
     legend,
+    orientation,
+    setOrientation,
 }) => (
     <div className="controls">
         <input
@@ -610,6 +646,17 @@ const ControlPanel: React.FC<{
             multiple
             onChange={handleFileUpload}
         />
+
+        <button
+            onClick={() =>
+                setOrientation((prev) =>
+                    prev === "horizontal" ? "vertical" : "horizontal",
+                )
+            }
+            disabled={!hasValidData}
+        >
+            MODE: {orientation.toUpperCase()}
+        </button>
         <button
             onClick={() => setShowLegend(!showLegend)}
             disabled={!hasValidData}
