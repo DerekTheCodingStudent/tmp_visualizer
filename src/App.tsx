@@ -276,7 +276,7 @@ const BarChart: React.FC = () => {
         canvas.height = window.innerHeight;
 
         gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.clearColor(0.05, 0.05, 0.05, 1.0);
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(program);
