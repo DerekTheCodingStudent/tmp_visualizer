@@ -136,12 +136,21 @@ export function mapDataXToPlotWorld(
     return dest.minX + (dataX - src.minX) * (dest.w / src.w);
 }
 
-/** Map a data-space Y coordinate into plot-world Y using the same linear scale as the quads. */
+/**
+ * Map a data-space Y coordinate into plot-world Y using the same linear scale as the quads.
+ * When `invertY` is true, small data Y maps to the bottom of `dest` (larger plot Y on screen) so
+ * axis ticks read bottom→top as value increases (matches bottom-anchored vertical bars).
+ */
 export function mapDataYToPlotWorld(
     dataY: number,
     src: BBox,
     dest: BBox,
+    invertY = false,
 ): number {
     if (src.h <= 0) return dataY;
-    return dest.minY + (dataY - src.minY) * (dest.h / src.h);
+    const sy = dest.h / src.h;
+    if (invertY) {
+        return dest.maxY - (dataY - src.minY) * sy;
+    }
+    return dest.minY + (dataY - src.minY) * sy;
 }

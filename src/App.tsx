@@ -923,6 +923,7 @@ const XAxis: React.FC<{
                             tick,
                             srcBBox,
                             destBBox,
+                            true,
                         );
                         const tickTop =
                             cy + (plotY + translation.y) * scale;
@@ -967,8 +968,16 @@ const XAxis: React.FC<{
     const lineLeft = cx + (destBBox.minX + translation.x) * scale;
     const lineWidth = destBBox.w * scale;
 
-    const worldUnitsPerTick = targetSpacingPx / scale;
-    const interval = niceTickIntervalFromRough(worldUnitsPerTick);
+    // Match vertical Y-axis: ~targetSpacingPx on screen along the axis ⇒ interval in data units
+    let interval: number;
+    if (srcBBox != null && srcBBox.w > 0 && destBBox.w > 0) {
+        const rough =
+            (targetSpacingPx * srcBBox.w) / (destBBox.w * scale);
+        interval = niceTickIntervalFromRough(rough);
+    } else {
+        const worldUnitsPerTick = targetSpacingPx / scale;
+        interval = niceTickIntervalFromRough(worldUnitsPerTick);
+    }
 
     const ticks: number[] = [];
     if (srcBBox != null && srcBBox.w > 0) {
