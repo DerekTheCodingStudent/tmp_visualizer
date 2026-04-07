@@ -92,3 +92,46 @@ export function remapQuadsToBoundingBox(
         h: q.h * sy,
     }));
 }
+
+/** Fixed plot region in world space (must match border quad in App). */
+export const CHART_PLOT = {
+    cx: 0,
+    cy: 0,
+    halfWidth: 300,
+    top: 100,
+    bottom: -200,
+} as const;
+
+export function getChartPlotBBox(): BBox {
+    const { cx, cy, halfWidth, top, bottom } = CHART_PLOT;
+    const minX = cx - halfWidth;
+    const maxX = cx + halfWidth;
+    const minY = cy + bottom;
+    const maxY = cy + top;
+    return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+}
+
+export function mapPointBetweenBBoxes(
+    px: number,
+    py: number,
+    src: BBox,
+    dest: BBox,
+): { x: number; y: number } {
+    if (src.w <= 0 || src.h <= 0) return { x: px, y: py };
+    const sx = dest.w / src.w;
+    const sy = dest.h / src.h;
+    return {
+        x: dest.minX + (px - src.minX) * sx,
+        y: dest.minY + (py - src.minY) * sy,
+    };
+}
+
+/** Map a data-space X coordinate into plot-world X using the same linear scale as the quads. */
+export function mapDataXToPlotWorld(
+    dataX: number,
+    src: BBox,
+    dest: BBox,
+): number {
+    if (src.w <= 0) return dataX;
+    return dest.minX + (dataX - src.minX) * (dest.w / src.w);
+}
