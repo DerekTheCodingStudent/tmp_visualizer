@@ -3,6 +3,7 @@
 import json
 import random
 import argparse
+import time
 from pathlib import Path
 
 # ---- Argument Parsing ----
@@ -17,7 +18,16 @@ parser.add_argument(
     default=1,
     help="Target size in megabytes (default: 1)"
 )
+parser.add_argument(
+    "--seed",
+    type=int,
+    default=None,
+    help="RNG seed (default: time(NULL))",
+)
 args = parser.parse_args()
+
+seed = args.seed if args.seed is not None else int(time.time())
+random.seed(seed)
 
 TARGET_SIZE_BYTES = int(args.mb * 1_000_000)
 
@@ -37,6 +47,43 @@ legend = [
     {"name": "Data wait",       "color": [0.5, 0.5, 0.5, 1.0]},
 ]
 
+
+def build_record_pool(pool_size=20):
+    """Create reusable bar templates to mimic real recurring workload shapes."""
+    records = []
+    for rid in range(pool_size):
+        base_w = random.choice([68, 72, 76, 80, 84, 88, 92])
+        base_h = random.randint(90, 220)
+        y = random.choice([40, 45, 50, 55, 60])
+        # Keep distribution broad so records are visually distinct.
+        segment_values = [random.randint(8, 120) for _ in range(4)]
+        records.append(
+            {
+                "recordId": rid,
+                "y": y,
+                "w": base_w,
+                "h": base_h,
+                "segmentValues": segment_values,
+            }
+        )
+    return records
+
+
+def pick_record_index(i, pool_size):
+    """
+    Non-linear lookup with occasional random jumps:
+    - baseline index mixes quadratic and multiplicative terms
+    - every ~7th item may hop to a random record
+    - every ~11th item may mirror from the end of the pool
+    """
+    idx = (i * i + 3 * i + 7) % pool_size
+    if i % 7 == 0 and random.random() < 0.55:
+        idx = random.randint(0, pool_size - 1)
+    if i % 11 == 0 and random.random() < 0.4:
+        idx = (pool_size - 1) - idx
+    return idx
+
+
 def encode(obj):
     return len(json.dumps(obj, separators=(",", ":")).encode())
 
@@ -52,7 +99,12 @@ sample_bar = {
     "w": 80,
     "h": 120,
     "label": "Run 0",
-    "segments": [50, 50, 50, 50],
+    "segments": [
+        {"value": 50, "legendIndex": 0},
+        {"value": 50, "legendIndex": 1},
+        {"value": 50, "legendIndex": 2},
+        {"value": 50, "legendIndex": 3},
+    ],
 }
 
 one_bar_size = encode({"legend": legend, "bars": [sample_bar]}) - base_size
@@ -68,21 +120,30 @@ print(f"Target size: {TARGET_SIZE_BYTES/1024:.1f} KB")
 print(f"Base size: {base_size} bytes")
 print(f"Per-bar size (approx): {one_bar_size} bytes")
 print(f"Bars needed: {bars_needed}")
+print(f"Seed: {seed}")
 
 # ---- Generate bars ----
 
 bars = []
 x_start = -5000
 x_spacing = 90
+record_pool = build_record_pool(pool_size=20)
 
 for i in range(int(bars_needed)):
+    record_idx = pick_record_index(i, len(record_pool))
+    template = record_pool[record_idx]
+    segment_values = template["segmentValues"]
+    segments = [
+        {"value": value, "legendIndex": idx}
+        for idx, value in enumerate(segment_values)
+    ]
     bars.append({
         "x": x_start + i * x_spacing,
-        "y": 50,
-        "w": 80,
-        "h": 120,
-        "label": f"Run {i}",
-        "segments": [random.randint(5, 100) for _ in range(4)],
+        "y": template["y"],
+        "w": template["w"],
+        "h": template["h"],
+        "label": f"Run {i} (r{record_idx})",
+        "segments": segments,
     })
 
 # ---- Final encode ----

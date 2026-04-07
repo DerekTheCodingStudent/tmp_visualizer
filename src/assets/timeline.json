@@ -16,7 +16,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 01",
-      "segments": [440, 420, 460, 440, 440]
+      "segments": [
+        { "value": 440, "legendIndex": 0 },
+        { "value": 420, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 2 },
+        { "value": 440, "legendIndex": 1 },
+        { "value": 440, "legendIndex": 3 }
+      ]
     },
     {
       "x": 110,
@@ -24,7 +30,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 02",
-      "segments": [400, 450, 500, 450, 400]
+      "segments": [
+        { "value": 400, "legendIndex": 0 },
+        { "value": 450, "legendIndex": 1 },
+        { "value": 500, "legendIndex": 2 },
+        { "value": 450, "legendIndex": 3 },
+        { "value": 400, "legendIndex": 4 }
+      ]
     },
     {
       "x": 220,
@@ -32,7 +44,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 03",
-      "segments": [420, 400, 460, 460, 460]
+      "segments": [
+        { "value": 420, "legendIndex": 0 },
+        { "value": 400, "legendIndex": 1 },
+        { "value": 460, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 3 },
+        { "value": 460, "legendIndex": 4 }
+      ]
     },
     {
       "x": 330,
@@ -40,7 +58,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 04",
-      "segments": [380, 440, 460, 460, 460]
+      "segments": [
+        { "value": 380, "legendIndex": 0 },
+        { "value": 440, "legendIndex": 1 },
+        { "value": 460, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 3 },
+        { "value": 460, "legendIndex": 4 }
+      ]
     },
     {
       "x": 440,
@@ -48,7 +72,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 05",
-      "segments": [450, 440, 450, 450, 410]
+      "segments": [
+        { "value": 450, "legendIndex": 0 },
+        { "value": 440, "legendIndex": 1 },
+        { "value": 450, "legendIndex": 2 },
+        { "value": 450, "legendIndex": 3 },
+        { "value": 410, "legendIndex": 4 }
+      ]
     },
     {
       "x": 550,
@@ -56,7 +86,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 06",
-      "segments": [500, 400, 450, 450, 400]
+      "segments": [
+        { "value": 500, "legendIndex": 0 },
+        { "value": 400, "legendIndex": 1 },
+        { "value": 450, "legendIndex": 2 },
+        { "value": 450, "legendIndex": 3 },
+        { "value": 400, "legendIndex": 4 }
+      ]
     },
     {
       "x": 660,
@@ -64,7 +100,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 07",
-      "segments": [400, 440, 460, 450, 450]
+      "segments": [
+        { "value": 400, "legendIndex": 0 },
+        { "value": 440, "legendIndex": 1 },
+        { "value": 460, "legendIndex": 2 },
+        { "value": 450, "legendIndex": 3 },
+        { "value": 450, "legendIndex": 4 }
+      ]
     },
     {
       "x": 770,
@@ -72,7 +114,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 08",
-      "segments": [460, 420, 440, 440, 440]
+      "segments": [
+        { "value": 460, "legendIndex": 0 },
+        { "value": 420, "legendIndex": 1 },
+        { "value": 440, "legendIndex": 2 },
+        { "value": 440, "legendIndex": 3 },
+        { "value": 440, "legendIndex": 4 }
+      ]
     },
     {
       "x": 880,
@@ -80,7 +128,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 09",
-      "segments": [400, 420, 480, 480, 420]
+      "segments": [
+        { "value": 400, "legendIndex": 0 },
+        { "value": 420, "legendIndex": 1 },
+        { "value": 480, "legendIndex": 2 },
+        { "value": 480, "legendIndex": 3 },
+        { "value": 420, "legendIndex": 4 }
+      ]
     },
     {
       "x": 990,
@@ -88,7 +142,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 10",
-      "segments": [430, 430, 430, 460, 450]
+      "segments": [
+        { "value": 430, "legendIndex": 0 },
+        { "value": 430, "legendIndex": 1 },
+        { "value": 430, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 3 },
+        { "value": 450, "legendIndex": 4 }
+      ]
     },
     {
       "x": 1100,
@@ -96,7 +156,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 11",
-      "segments": [360, 440, 480, 460, 460]
+      "segments": [
+        { "value": 360, "legendIndex": 0 },
+        { "value": 440, "legendIndex": 1 },
+        { "value": 480, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 3 },
+        { "value": 460, "legendIndex": 4 }
+      ]
     },
     {
       "x": 1210,
@@ -104,7 +170,13 @@
       "w": 90,
       "h": 2200,
       "label": "Job 12",
-      "segments": [400, 420, 440, 460, 480]
+      "segments": [
+        { "value": 400, "legendIndex": 0 },
+        { "value": 420, "legendIndex": 1 },
+        { "value": 440, "legendIndex": 2 },
+        { "value": 460, "legendIndex": 3 },
+        { "value": 480, "legendIndex": 4 }
+      ]
     }
   ]
 }

@@ -11,7 +11,7 @@ export interface BarData {
     w: number;
     h: number;
     label: string;
-    segments: number[];
+    segments: { value: number; legendIndex: number }[];
     sourceFile?: string;
 }
 

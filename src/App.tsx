@@ -47,28 +47,28 @@ function collectBarSegmentQuads(
     const quads: Quad[] = [];
 
     bars.forEach((bar) => {
-        const total = bar.segments.reduce((a, b) => a + b, 0);
+        const total = bar.segments.reduce((a, segment) => a + segment.value, 0);
         if (total === 0) return;
 
         let offset = 0;
         const scaledY = bar.y * trackSpacing;
 
-        bar.segments.forEach((value, i) => {
+        bar.segments.forEach((segment) => {
             let x1: number;
             let x2: number;
             let yTop: number;
             let yBottom: number;
-            const color = legend[i]?.color ?? [1, 1, 1, 1];
+            const color = legend[segment.legendIndex]?.color ?? [1, 1, 1, 1];
 
             if (orientation === "horizontal") {
-                const segmentWidth = (value / total) * bar.h;
+                const segmentWidth = (segment.value / total) * bar.h;
                 x1 = bar.y + offset;
                 x2 = x1 + segmentWidth;
                 yTop = bar.x + bar.w;
                 yBottom = bar.x;
                 offset += segmentWidth;
             } else {
-                const segmentHeight = (value / total) * bar.h;
+                const segmentHeight = (segment.value / total) * bar.h;
                 x1 = bar.x;
                 x2 = bar.x + bar.w;
                 // First segment at scaledY + bar.h (screen bottom); stack upward (−wy on screen) for later phases.
@@ -286,7 +286,6 @@ const BarChart: React.FC = () => {
             b.minY,
             ...borderColor,
         ]);
-        console.log(data);
         gl.bindBuffer(gl.ARRAY_BUFFER, borderBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
 
@@ -386,11 +385,9 @@ const BarChart: React.FC = () => {
         // ALWAYS bind index buffer right before drawing
         const indexBuffer = indexBufferRef.current;
         if (!indexBuffer) {
-            console.log("Index buffer is NULL, exiting draw()");
+            console.warn("Index buffer is NULL, exiting draw()");
             return 0;
         }
-
-        console.log("index count: ", indexCountRef.current);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.drawElements(

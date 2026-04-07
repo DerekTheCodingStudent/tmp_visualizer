@@ -15,7 +15,12 @@
       "w": 80,
       "h": 120,
       "label": "Run A",
-      "segments": [40, 30, 20, 30]
+      "segments": [
+        { "value": 40, "legendIndex": 0 },
+        { "value": 30, "legendIndex": 1 },
+        { "value": 20, "legendIndex": 2 },
+        { "value": 30, "legendIndex": 3 }
+      ]
     },
     {
       "x": 0,
@@ -23,7 +28,12 @@
       "w": 80,
       "h": 120,
       "label": "Run B",
-      "segments": [60, 20, 10, 30]
+      "segments": [
+        { "value": 60, "legendIndex": 0 },
+        { "value": 20, "legendIndex": 1 },
+        { "value": 10, "legendIndex": 2 },
+        { "value": 30, "legendIndex": 3 }
+      ]
     },
     {
       "x": 150,
@@ -31,7 +41,12 @@
       "w": 80,
       "h": 120,
       "label": "Run C",
-      "segments": [20, 40, 40, 20]
+      "segments": [
+        { "value": 20, "legendIndex": 0 },
+        { "value": 40, "legendIndex": 1 },
+        { "value": 40, "legendIndex": 2 },
+        { "value": 20, "legendIndex": 3 }
+      ]
     }
   ]
 }
