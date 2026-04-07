@@ -13,26 +13,65 @@ import {
     computeViewRect,
     computeBoundingBox,
     remapQuadsToBoundingBox,
+    getChartPlotBBox,
+    mapPointBetweenBBoxes,
+    mapDataXToPlotWorld,
 } from "./utils/mathUtils";
-import type { BBox } from "./utils/mathUtils";
 import { QuadNode, buildQuadTree, queryVisibleIndices } from "./utils/quadTree";
 
 const trackSpacing = 100;
-const visualBarHeight = 30;
+/** Plot-world units: vertical category labels sit just below the chart bbox (outside the frame). */
+const verticalLabelBelowPlotWorld = 14;
 
-/** Plot area in world space; must match `generateBorderBuffer` quad. */
-const chartPlotCenter = { cx: 0, cy: 0 };
-const chartPlotHalfWidth = 300;
-const chartPlotTop = 100;
-const chartPlotBottom = -200;
+/** Segment quads in data space (same layout as WebGL before remap to the plot box). */
+function collectBarSegmentQuads(
+    bars: BarData[],
+    legend: LegendItem[],
+    orientation: Orientation,
+): Quad[] {
+    const quads: Quad[] = [];
 
-function chartDestinationBBox(): BBox {
-    const { cx, cy } = chartPlotCenter;
-    const minX = cx - chartPlotHalfWidth;
-    const maxX = cx + chartPlotHalfWidth;
-    const minY = cy + chartPlotBottom;
-    const maxY = cy + chartPlotTop;
-    return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+    bars.forEach((bar) => {
+        const total = bar.segments.reduce((a, b) => a + b, 0);
+        if (total === 0) return;
+
+        let offset = 0;
+        const scaledY = bar.y * trackSpacing;
+
+        bar.segments.forEach((value, i) => {
+            let x1: number;
+            let x2: number;
+            let yTop: number;
+            let yBottom: number;
+            const color = legend[i]?.color ?? [1, 1, 1, 1];
+
+            if (orientation === "horizontal") {
+                const segmentWidth = (value / total) * bar.h;
+                x1 = bar.y + offset;
+                x2 = x1 + segmentWidth;
+                yTop = bar.x + bar.w;
+                yBottom = bar.x;
+                offset += segmentWidth;
+            } else {
+                const segmentHeight = (value / total) * bar.h;
+                x1 = bar.x;
+                x2 = bar.x + bar.w;
+                yBottom = scaledY + offset;
+                yTop = yBottom + segmentHeight;
+                offset += segmentHeight;
+            }
+
+            quads.push({
+                x: x1,
+                y: yBottom,
+                w: x2 - x1,
+                h: yTop - yBottom,
+                color,
+            });
+        });
+    });
+
+    return quads;
 }
 
 const BarChart: React.FC = () => {
@@ -157,47 +196,7 @@ const BarChart: React.FC = () => {
         if (!gl || !buffer) return;
 
         const vertexData: number[] = [];
-        const baseQuads: Quad[] = [];
-
-        bars.forEach((bar) => {
-            const total = bar.segments.reduce((a, b) => a + b, 0);
-            if (total === 0) return;
-
-            let offset = 0;
-            const scaledY = bar.y * trackSpacing;
-
-            bar.segments.forEach((value, i) => {
-                let x1, x2, yTop, yBottom;
-                const color = legend[i]?.color ?? [1, 1, 1, 1];
-
-                if (orientation === "horizontal") {
-                    // Horizontal (Timeline Mode): Segments stack along X-axis
-                    const segmentWidth = (value / total) * bar.h;
-
-                    x1 = bar.y + offset;
-                    x2 = x1 + segmentWidth;
-                    yTop = bar.x + bar.w;
-                    yBottom = bar.x;
-                    offset += segmentWidth;
-                } else {
-                    // Vertical (Standard Mode): Segments stack along Y-axis
-                    const segmentHeight = (value / total) * bar.h;
-                    x1 = bar.x;
-                    x2 = bar.x + bar.w;
-                    yBottom = scaledY + offset;
-                    yTop = yBottom + segmentHeight;
-                    offset += segmentHeight;
-                }
-
-                baseQuads.push({
-                    x: x1,
-                    y: yBottom,
-                    w: x2 - x1,
-                    h: yTop - yBottom,
-                    color,
-                });
-            });
-        });
+        const baseQuads = collectBarSegmentQuads(bars, legend, orientation);
 
         const srcBBox = computeBoundingBox(baseQuads);
         const plotQuads =
@@ -205,7 +204,7 @@ const BarChart: React.FC = () => {
                 ? remapQuadsToBoundingBox(
                       baseQuads,
                       srcBBox,
-                      chartDestinationBBox(),
+                      getChartPlotBBox(),
                   )
                 : baseQuads;
 
@@ -259,22 +258,21 @@ const BarChart: React.FC = () => {
         const borderBuffer = gl.createBuffer();
         borderBufferRef.current = borderBuffer;
 
-        const { cx, cy } = chartPlotCenter;
-
+        const b = getChartPlotBBox();
         const borderColor = [0.4, 0.4, 0.4, 1];
 
         const data = new Float32Array([
-            cx - chartPlotHalfWidth,
-            cy + chartPlotTop,
+            b.minX,
+            b.maxY,
             ...borderColor,
-            cx + chartPlotHalfWidth,
-            cy + chartPlotTop,
+            b.maxX,
+            b.maxY,
             ...borderColor,
-            cx + chartPlotHalfWidth,
-            cy + chartPlotBottom,
+            b.maxX,
+            b.minY,
             ...borderColor,
-            cx - chartPlotHalfWidth,
-            cy + chartPlotBottom,
+            b.minX,
+            b.minY,
             ...borderColor,
         ]);
         console.log(data);
@@ -392,7 +390,7 @@ const BarChart: React.FC = () => {
         );
 
         /* ===== Draw Border ===== */
-        const noFlip: int = 0;
+        const noFlip = 0;
         gl.uniform1i(flipLoc, noFlip);
         gl.bindBuffer(gl.ARRAY_BUFFER, borderBuffer);
 
@@ -573,6 +571,7 @@ const BarChart: React.FC = () => {
                         titles={titles}
                         fileLabels={fileLabels}
                         bars={bars}
+                        legend={legend}
                         scale={scale}
                         translation={translation}
                         orientation={orientation}
@@ -580,6 +579,8 @@ const BarChart: React.FC = () => {
 
                     <XAxis
                         bars={bars}
+                        legend={legend}
+                        orientation={orientation}
                         scale={scale}
                         translation={translation}
                         unit={unit}
@@ -614,14 +615,24 @@ const ChartOverlays: React.FC<{
     titles: string[];
     fileLabels: { name: string; x: number; y: number }[];
     bars: BarData[];
+    legend: LegendItem[];
     scale: number;
     translation: { x: number; y: number };
     orientation: Orientation;
-}> = ({ titles, fileLabels, bars, scale, translation, orientation }) => {
+}> = ({ titles, fileLabels, bars, legend, scale, translation, orientation }) => {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
+    const dataQuads = collectBarSegmentQuads(bars, legend, orientation);
+    const srcBBox = computeBoundingBox(dataQuads);
+    const destBBox = getChartPlotBBox();
+
     const labels = new Set<string>();
+
+    const worldToScreen = (wx: number, wy: number) => ({
+        left: cx + (wx + translation.x) * scale,
+        top: cy + (wy + translation.y) * scale,
+    });
 
     return (
         <div className="ui-overlay">
@@ -653,7 +664,7 @@ const ChartOverlays: React.FC<{
                 </div>
             ))}
 
-            {/* Bar Labels (with Zoom/Viewport Culling) */}
+            {/* Bar labels: vertical → below bar (plot bottom); horizontal → left of bar (category axis). */}
             {scale >= 0.8 &&
                 bars.map((bar, i) => {
                     const currLabel = `${bar.label}_${bar.y}`;
@@ -662,9 +673,38 @@ const ChartOverlays: React.FC<{
                         return null;
                     }
 
-                    const left = cx + (bar.x + translation.x) * scale;
-                    const scaledY = bar.y * trackSpacing;
-                    const top = cy + (scaledY + translation.y) * scale;
+                    let worldX: number;
+                    let worldY: number;
+                    if (orientation === "vertical") {
+                        // X: center of bar in data space → plot X. Y: shared baseline under the plot
+                        // (do not map per-bar data Y or high tracks end up near the top of the bbox).
+                        const dataX = bar.x + bar.w / 2;
+                        worldX =
+                            srcBBox != null
+                                ? mapDataXToPlotWorld(dataX, srcBBox, destBBox)
+                                : dataX;
+                        worldY = destBBox.minY - verticalLabelBelowPlotWorld;
+                    } else {
+                        const dataX = bar.y;
+                        const dataY = bar.x + bar.w / 2;
+                        const p =
+                            srcBBox != null
+                                ? mapPointBetweenBBoxes(
+                                      dataX,
+                                      dataY,
+                                      srcBBox,
+                                      destBBox,
+                                  )
+                                : { x: dataX, y: dataY };
+                        worldX = p.x;
+                        worldY = p.y;
+                    }
+
+                    const { left, top } = worldToScreen(worldX, worldY);
+                    const bottom =
+                        window.innerHeight - top;
+                    console.log("bottom", bottom);
+                    console.log("top", top);
 
                     if (
                         left < -100 ||
@@ -677,16 +717,17 @@ const ChartOverlays: React.FC<{
                     labels.add(currLabel);
 
                     const labelStyle: React.CSSProperties =
-                        orientation === "horizontal"
+                        orientation === "vertical"
                             ? {
                                   left: `${left}px`,
-                                  top: `${top - (visualBarHeight / 2) * scale}px`,
-                                  transform: "translateY(-100%)",
+                                  top: `auto`,
+                                  bottom: `${bottom - 16}px`,
+                                  transform: "translate(-50%, 2000%)",
                               }
                             : {
-                                  left: `${left + 25 * scale}px`,
+                                  left: `${left - 8}px`,
                                   top: `${top}px`,
-                                  transform: "translateX(10px)",
+                                  transform: "translate(-100%, -50%)",
                               };
 
                     return (
@@ -816,56 +857,81 @@ const ShortcutsPanel = () => (
     </div>
 );
 
-// units logic
+// units logic — axis sits on the bottom edge of the plot bbox, span [minX, maxX] in plot space
 const XAxis: React.FC<{
     bars: BarData[];
+    legend: LegendItem[];
+    orientation: Orientation;
     scale: number;
     translation: { x: number; y: number };
     unit: string;
-}> = ({ bars, scale, translation, unit }) => {
+}> = ({ bars, legend, orientation, scale, translation, unit }) => {
     if (bars.length === 0) return null;
 
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
-    const maxY = Math.max(...bars.map((b) => b.y));
-    const axisYWorld = maxY * trackSpacing + visualBarHeight; // Position axis slightly below bottom bar
+    const dataQuads = collectBarSegmentQuads(bars, legend, orientation);
+    const srcBBox = computeBoundingBox(dataQuads);
+    const destBBox = getChartPlotBBox();
+
+    const axisYWorld = destBBox.minY;
     const axisYScreen = cy + (axisYWorld + translation.y) * scale;
+    const lineLeft = cx + (destBBox.minX + translation.x) * scale;
+    const lineWidth = destBBox.w * scale;
 
-    // Calculate world-space horizontal range currently in view
-    const leftWorld = -cx / scale - translation.x;
-    const rightWorld = cx / scale - translation.x;
-
-    // Determine interval size based on zoom
     const targetSpacingPx = 100;
     const worldUnitsPerTick = targetSpacingPx / scale;
     const exponent = Math.floor(Math.log10(worldUnitsPerTick));
     const fraction = worldUnitsPerTick / Math.pow(10, exponent);
 
-    let interval;
+    let interval: number;
     if (fraction < 1.5) interval = 1;
     else if (fraction < 3) interval = 2;
     else if (fraction < 7) interval = 5;
     else interval = 10;
     interval *= Math.pow(10, exponent);
 
-    const startTick = Math.max(Math.ceil(leftWorld / interval) * interval, 0);
-    const ticks = [];
-    for (let t = startTick; t <= rightWorld; t += interval) {
-        ticks.push(t);
+    const ticks: number[] = [];
+    if (srcBBox != null && srcBBox.w > 0) {
+        const startTick = Math.ceil(srcBBox.minX / interval) * interval;
+        for (let t = startTick; t <= srcBBox.maxX + 1e-9; t += interval) {
+            ticks.push(t);
+        }
+    } else {
+        const leftWorld = -cx / scale - translation.x;
+        const rightWorld = cx / scale - translation.x;
+        const startTick = Math.max(Math.ceil(leftWorld / interval) * interval, 0);
+        for (let t = startTick; t <= rightWorld; t += interval) {
+            ticks.push(t);
+        }
     }
+
+    const axisTitleLeft =
+        cx +
+        ((destBBox.minX + destBBox.maxX) / 2 + translation.x) * scale;
 
     return (
         <div
             className="axis-relative-container"
             style={{ top: `${axisYScreen}px` }}
         >
-            {/* The horizontal axis line (bottom of the box) */}
-            <div className="axis-line" />
+            <div
+                className="axis-line"
+                style={{
+                    left: `${lineLeft}px`,
+                    width: `${lineWidth}px`,
+                }}
+            />
 
             {ticks.map((tick) => {
-                const tickLeft = cx + (tick + translation.x) * scale;
-                if (tickLeft < 0 || tickLeft > window.innerWidth) return null;
+                const plotX =
+                    srcBBox != null && srcBBox.w > 0
+                        ? mapDataXToPlotWorld(tick, srcBBox, destBBox)
+                        : tick;
+                const tickLeft = cx + (plotX + translation.x) * scale;
+                if (tickLeft < -80 || tickLeft > window.innerWidth + 80)
+                    return null;
 
                 return (
                     <div
@@ -881,10 +947,9 @@ const XAxis: React.FC<{
                 );
             })}
 
-            {/* Legend label for the axis */}
             <div
                 className="axis-title"
-                style={{ left: `${cx + translation.x * scale}px` }}
+                style={{ left: `${axisTitleLeft}px` }}
             >
                 Time ({unit})
             </div>
