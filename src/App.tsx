@@ -691,7 +691,7 @@ const ChartOverlays: React.FC<{
     scale: number;
     translation: { x: number; y: number };
     orientation: Orientation;
-}> = ({ titles, fileLabels, bars, legend, scale, translation, orientation }) => {
+}> = ({ titles, bars, legend, scale, translation, orientation }) => {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
@@ -723,7 +723,7 @@ const ChartOverlays: React.FC<{
             ))}
 
             {/* File Source Labels Mapping */}
-            {fileLabels.map((file, i) => (
+            {/* {fileLabels.map((file, i) => (
                 <div
                     key={`file-${i}`}
                     className="file-header-label"
@@ -734,7 +734,7 @@ const ChartOverlays: React.FC<{
                 >
                     SOURCE: {file.name}
                 </div>
-            ))}
+            ))} */}
 
             {/* Bar labels: vertical → below bar (plot bottom); horizontal → left of bar (category axis). */}
             {scale >= 0.8 &&
