@@ -29,21 +29,21 @@ args = parser.parse_args()
 seed = args.seed if args.seed is not None else int(time.time())
 random.seed(seed)
 
-TARGET_SIZE_BYTES = int(args.mb * 1_000_000)
+TARGET_SIZE_BYTES = int(args.mb * 10_000)
 
 # ---- Paths ----
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = "data"
-OUTPUT_FILE = SCRIPT_DIR / DATA_DIR / f"large_chart_{args.mb}mWb.json"
+OUTPUT_FILE = SCRIPT_DIR / DATA_DIR / f"large_chart_{args.mb}kb.json"
 OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ---- Chart Template ----
 
 legend = [
-    {"name": "GPU-only",        "color": [0.1, 0.8, 1.0, 0.0]},
-    {"name": "CPU-only",        "color": [1.0, 0.6, 0.1, 1.0]},
-    {"name": "GPU/CPU overlap", "color": [0.6, 0.4, 1.0, 1.0]},
+    {"name": "GPU-only",        "color": [0.1, 0.8, 1.0, 1.0]},
+    {"name": "CPU-only",        "color": [1.0, 0.6, 0.1, 0.0]},
+    {"name": "GPU/CPU overlap", "color": [0.6, 0.4, 1.0, 0.6]},
     {"name": "Data wait",       "color": [0.5, 0.5, 0.5, 1.0]},
 ]
 
