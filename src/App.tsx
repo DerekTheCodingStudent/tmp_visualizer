@@ -909,8 +909,8 @@ const ShortcutsPanel = () => (
     <div className="shortcuts-panel">
         <div className="shortcuts-title">Keyboard Shortcuts</div>
         <div>alt + K → Toggle UI</div>
-        <div>alt + M → Toggle Help</div>
-        <div>alt + c → Toggle culling</div>
+        <div>alt + M → Toggle Shortcuts</div>
+        <div>alt + c → Toggle Culling</div>
         <div>Mouse Wheel → Zoom</div>
     </div>
 );
