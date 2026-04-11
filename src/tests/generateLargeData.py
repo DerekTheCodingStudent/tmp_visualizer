@@ -41,7 +41,7 @@ OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 # ---- Chart Template ----
 
 legend = [
-    {"name": "GPU-only",        "color": [0.1, 0.8, 1.0, 1.0]},
+    {"name": "GPU-only",        "color": [0.1, 0.8, 1.0, 0.0]},
     {"name": "CPU-only",        "color": [1.0, 0.6, 0.1, 1.0]},
     {"name": "GPU/CPU overlap", "color": [0.6, 0.4, 1.0, 1.0]},
     {"name": "Data wait",       "color": [0.5, 0.5, 0.5, 1.0]},
@@ -53,7 +53,7 @@ def build_record_pool(pool_size=20):
     records = []
     for rid in range(pool_size):
         base_w = random.choice([68, 72, 76, 80, 84, 88, 92])
-        base_h = random.randint(90, 220)
+        base_h = 220 # random.randint(90, 220)
         y = 0
         # Keep distribution broad so records are visually distinct.
         segment_values = [random.randint(8, 120) for _ in range(4)]
